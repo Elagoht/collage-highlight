@@ -1,0 +1,45 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Elagoht/collage-snippets-highlighter/main/schemas/collage-plugin-manifest.schema.json",
+  "name": "elagoht/highlight",
+  "description": "A collage plugin that colours code with chroma.",
+  "repository": "https://github.com/Elagoht/collage-highlight",
+  "templateFunctions": [
+    {
+      "name": "highlight",
+      "signature": "highlight code \"lang\"",
+      "insert": "highlight ${1:.Code} \"${2:go}\"",
+      "doc": "The code syntax-highlighted with CSS classes, and the stylesheet hoisted into the head."
+    }
+  ],
+  "snippets": {
+    "collage-highlight code": {
+      "language": "html",
+      "prefix": "ccode",
+      "body": [
+        "{{highlight ${1:.Code} \"${2:go}\"}}"
+      ],
+      "description": "collage-highlight: highlighted code"
+    }
+  },
+  "config": {
+    "type": "object",
+    "description": "A collage plugin that colours code with chroma.",
+    "properties": {
+      "auto": {
+        "type": "boolean",
+        "description": "Auto colours the code blocks already on a rendered page: <pre><code class=\"language-go\">, as Markdown renderers write them. On by default; false leaves only {{highlight}}."
+      },
+      "dark": {
+        "type": "string"
+      },
+      "light": {
+        "type": "string",
+        "description": "Light and Dark are the chroma styles of the two themes, chosen by the reader's prefers-color-scheme: \"github\", \"monokai\", \"dracula\"… Default \"github\" and \"github-dark\". Dark \"-\" leaves the dark theme out, and Light is then used in both."
+      },
+      "noBackground": {
+        "type": "boolean",
+        "description": "NoBackground leaves the block's background colour to the site's own stylesheet, keeping the theme's text colours."
+      }
+    }
+  }
+}
