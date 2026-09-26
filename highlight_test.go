@@ -144,6 +144,40 @@ func TestOneLink(t *testing.T) {
 	}
 }
 
+// The link lands where the layout put {{hoist "head"}}, not merely before
+// </head>: ahead of the site's own stylesheet, which can then override it.
+func TestLinkedWhereTheLayoutHoists(t *testing.T) {
+	app := site(t, highlight.Options{}, map[string]string{
+		"index": `<html><head><title>T</title>{{hoist "head"}}<link rel="stylesheet" href="/site.css"></head><body><pre><code class="language-go">x := 1</code></pre></body></html>`,
+	})
+	body := get(app, "/").Body.String()
+	links := styleLink.FindAllStringSubmatch(body, -1)
+	if len(links) != 1 || !strings.Contains(body, `<title>T</title>`+links[0][0]+`<link rel="stylesheet" href="/site.css">`) {
+		t.Fatalf("the stylesheet is not linked at the layout's hoist\n%s", body)
+	}
+	if n := strings.Count(body, `class="chroma"`); n != 1 {
+		t.Errorf("%d blocks coloured, want 1\n%s", n, body)
+	}
+}
+
+// A block before the hoist — a <pre> written in the head — is still replaced
+// whole, though the link moved everything after it but not it.
+func TestBlockBeforeTheHoist(t *testing.T) {
+	app := site(t, highlight.Options{}, map[string]string{
+		"index": `<html><head><pre><code class="language-go">x := 1</code></pre>{{hoist "head"}}</head><body><pre><code class="language-go">y := 2</code></pre></body></html>`,
+	})
+	body := get(app, "/").Body.String()
+	if n := strings.Count(body, `class="chroma"`); n != 2 || strings.Contains(body, "language-go") {
+		t.Errorf("%d blocks coloured, want both\n%s", n, body)
+	}
+	if n := len(styleLink.FindAllString(body, -1)); n != 1 || !strings.HasSuffix(strings.SplitN(body, "</head>", 2)[0], ">") {
+		t.Errorf("%d stylesheet links\n%s", n, body)
+	}
+	if !strings.HasPrefix(body, `<html><head><pre class="chroma">`) {
+		t.Errorf("the head's block was not replaced in place\n%s", body)
+	}
+}
+
 // A page without code, or with Auto off, is served exactly as rendered.
 func TestUntouched(t *testing.T) {
 	plain := `<html><head></head><body><p>No code</p><code class="language-go">inline</code></body></html>`

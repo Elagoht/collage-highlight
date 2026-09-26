@@ -11,7 +11,7 @@ app, err := collage.New(&collage.Config{
 })
 ```
 
-Requires collage v0.23.0 or later. Register it in `Config.Plugins`: it adds a
+Requires collage v0.25.0 or later. Register it in `Config.Plugins`: it adds a
 template function, which only a plugin registered there can.
 
 Registering it is the whole of it for a site whose pages already hold
@@ -35,7 +35,12 @@ text in the same block, so a typo is a grey block rather than a failed page.
 With `auto` on — the default — every rendered page is read for a `<pre>` holding one
 `<code>` whose class names a language, `language-go` or `lang-go`, and nothing but
 text. Each is replaced by its coloured markup, where it stands, and the stylesheet
-is linked at the end of the page's `<head>`.
+is hoisted into the page's head with `AfterRenderEvent.Hoist`: it lands where the
+layout put `{{hoist "head"}}`, after what the page declared there, so a stylesheet
+of the site's own that follows it in the layout can override it. A layout without
+`{{hoist "head"}}`, or a page an earlier plugin rewrote, gets it just before
+`</head>`. A page whose template called `{{highlight}}` has the link already and is
+not given a second.
 
 The page is tokenised with `golang.org/x/net/html`, not parsed and written back, so
 nothing but the blocks changes: the rest of the page is served byte for byte as the
@@ -96,6 +101,20 @@ stops `collage.New`, rather than falling back to one nobody chose.
 - A fragment served on its own — a fragment path, a pushed update — does not run
   the page hooks, so the `auto` pass does not colour its blocks. `{{highlight}}`
   in the fragment's template does.
-- A page with no `</head>` and no `<body>` tag gets its blocks coloured but no
-  stylesheet link.
+- A page with no `</head>` gets its blocks coloured but no stylesheet link.
+- A layout that links the stylesheet by hand, rather than through
+  `{{highlight}}` or `HoistStylesheet("/_highlight/style.css")`, is given it a
+  second time.
 - No line numbers or highlighted lines.
+
+## Changes
+
+### v0.2.0
+
+- The stylesheet is added with collage v0.25.0's `AfterRenderEvent.Hoist`, under
+  the key `{{highlight}}` uses, rather than spliced in before `</head>` by hand. It
+  lands where the layout put `{{hoist "head"}}`, so the layout decides its order
+  among the head's other stylesheets.
+- A page with a `<body>` but no `</head>` no longer gets the link before `<body>`,
+  and a link written into the head by hand is no longer looked for.
+- Requires collage v0.25.0.

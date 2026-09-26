@@ -83,7 +83,7 @@ var (
 func New(opts Options) *Plugin { return &Plugin{opts: opts} }
 
 func (p *Plugin) Name() string                   { return Name }
-func (p *Plugin) Version() string                { return "0.1.0" }
+func (p *Plugin) Version() string                { return "0.2.0" }
 func (p *Plugin) Shutdown(context.Context) error { return nil }
 
 // Configure reads the configuration, makes the stylesheet, and adds
@@ -247,14 +247,24 @@ func (p *Plugin) OnBeforeRender(_ context.Context, ev *collage.BeforeRenderEvent
 	return nil
 }
 
+// styleKey is the stylesheet's key in the head's hoist area — the one
+// RenderContext.HoistStylesheet gives it, so a page whose template called
+// {{highlight}} is not given the link twice.
+const styleKey = "stylesheet:" + StylePath
+
 // OnAfterRender colours the page's code blocks, and links the stylesheet from
 // its head when it did.
+//
+// The link is hoisted before the blocks are replaced: ev.Hoist finds the place
+// the layout put {{hoist "head"}} only in the HTML the render produced, and
+// replacing the blocks first would leave it the fallback before </head>.
 func (p *Plugin) OnAfterRender(_ context.Context, ev *collage.AfterRenderEvent) error {
 	if !p.auto || !bytes.Contains(ev.HTML, []byte("<code")) {
 		return nil
 	}
-	out, n := p.colour(ev.HTML)
-	if n == 0 {
+	page := ev.HTML
+	coloured := p.colour(page)
+	if len(coloured) == 0 {
 		return nil
 	}
 	href := StylePath
@@ -263,7 +273,22 @@ func (p *Plugin) OnAfterRender(_ context.Context, ev *collage.AfterRenderEvent) 
 			href = v
 		}
 	}
-	ev.HTML = linkStylesheet(out, href)
+	link := template.HTML(`<link rel="stylesheet" href="` + html.EscapeString(href) + `">`)
+	if ev.Hoist("head", styleKey, link) {
+		// The head comes before the code, so every block has moved by the
+		// link's length. Should one not have — a <pre> written before </head>
+		// — the blocks are found again rather than a wrong span replaced.
+		shift := len(ev.HTML) - len(page)
+		for i, c := range coloured {
+			if !bytes.Equal(ev.HTML[c.start+shift:c.end+shift], page[c.start:c.end]) {
+				coloured = p.colour(ev.HTML)
+				break
+			}
+			coloured[i].start += shift
+			coloured[i].end += shift
+		}
+	}
+	ev.HTML = replace(ev.HTML, coloured)
 	return nil
 }
 
@@ -274,30 +299,40 @@ type block struct {
 	lang, code string
 }
 
-// colour replaces every code block of a known language with its coloured
-// markup, and reports how many it replaced. The page is tokenised, not parsed:
-// only the blocks' bytes change, and everything around them is served as the
-// templates wrote it.
-func (p *Plugin) colour(page []byte) ([]byte, int) {
-	blocks := codeBlocks(page)
-	if len(blocks) == 0 {
-		return page, 0
-	}
-	var out bytes.Buffer
-	out.Grow(len(page) + len(page)/2)
-	last, n := 0, 0
-	for _, b := range blocks {
-		coloured, err := p.highlight(b.code, b.lang, false)
+// coloured is a code block's span of the page and the markup it is replaced
+// with.
+type coloured struct {
+	start, end int
+	markup     template.HTML
+}
+
+// colour colours every code block of a known language on page, in order. The
+// page is tokenised, not parsed: only the blocks' bytes change, and everything
+// around them is served as the templates wrote it.
+func (p *Plugin) colour(page []byte) []coloured {
+	var out []coloured
+	for _, b := range codeBlocks(page) {
+		markup, err := p.highlight(b.code, b.lang, false)
 		if err != nil {
 			continue // an unknown language is left as it is
 		}
+		out = append(out, coloured{start: b.start, end: b.end, markup: markup})
+	}
+	return out
+}
+
+// replace returns page with each block's span replaced by its markup.
+func replace(page []byte, blocks []coloured) []byte {
+	var out bytes.Buffer
+	out.Grow(len(page) + len(page)/2)
+	last := 0
+	for _, b := range blocks {
 		out.Write(page[last:b.start])
-		out.WriteString(string(coloured))
+		out.WriteString(string(b.markup))
 		last = b.end
-		n++
 	}
 	out.Write(page[last:])
-	return out.Bytes(), n
+	return out.Bytes()
 }
 
 // codeBlocks finds each <pre> whose only content is one <code> naming a language
@@ -382,49 +417,6 @@ func language(tok html.Token) string {
 			if lang, ok := strings.CutPrefix(class, "lang-"); ok && lang != "" {
 				return lang
 			}
-		}
-	}
-	return ""
-}
-
-// linkStylesheet puts <link rel="stylesheet" href> at the end of the page's head,
-// unless the head links the stylesheet already — as it does when a template
-// called {{highlight}}, which hoisted it. A page with no </head> to put it before
-// gets it before <body>, and a page with neither is left alone.
-func linkStylesheet(page []byte, href string) []byte {
-	z := html.NewTokenizer(bytes.NewReader(page))
-	offset, at := 0, -1
-	for at < 0 {
-		tt := z.Next()
-		if tt == html.ErrorToken {
-			return page
-		}
-		start := offset
-		offset += len(z.Raw())
-		tok := z.Token()
-		switch {
-		case tt == html.StartTagToken || tt == html.SelfClosingTagToken:
-			if tok.DataAtom == atom.Body {
-				at = start
-			}
-			if tok.DataAtom == atom.Link && strings.Contains(attr(tok, "href"), "/_highlight/style") {
-				return page
-			}
-		case tt == html.EndTagToken && tok.DataAtom == atom.Head:
-			at = start
-		}
-	}
-	link := `<link rel="stylesheet" href="` + html.EscapeString(href) + `">`
-	out := make([]byte, 0, len(page)+len(link))
-	out = append(out, page[:at]...)
-	out = append(out, link...)
-	return append(out, page[at:]...)
-}
-
-func attr(tok html.Token, key string) string {
-	for _, a := range tok.Attr {
-		if a.Key == key {
-			return a.Val
 		}
 	}
 	return ""
