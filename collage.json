@@ -27,7 +27,7 @@
     "properties": {
       "auto": {
         "type": "boolean",
-        "description": "Auto colours the code blocks already on a rendered page: <pre><code class=\"language-go\">, as Markdown renderers write them. On by default; false leaves only {{highlight}}."
+        "description": "Auto colours the code blocks already on a rendered page: \u003cpre\u003e\u003ccode class=\"language-go\"\u003e, as Markdown renderers write them. On by default; false leaves only {{highlight}}."
       },
       "dark": {
         "type": "string"
@@ -40,6 +40,7 @@
         "type": "boolean",
         "description": "NoBackground leaves the block's background colour to the site's own stylesheet, keeping the theme's text colours."
       }
-    }
+    },
+    "additionalProperties": false
   }
 }
