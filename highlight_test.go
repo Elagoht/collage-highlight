@@ -34,7 +34,7 @@ func newSite(opts highlight.Options, pages map[string]string) (*collage.App, err
 			path = "/"
 		}
 		page := collage.NewPage(name).
-			WithContent(collage.NewFragment(name, name+".html").WithData(map[string]string{"Code": `if a < b { fmt.Println("x") }`}).Build()).
+			WithContent(collage.NewFragment(name, name+".html").WithData(collage.Value(map[string]string{"Code": `if a < b { fmt.Println("x") }`})).Build()).
 			WithPath("en", path).
 			Build()
 		if err := app.RegisterPage(page); err != nil {

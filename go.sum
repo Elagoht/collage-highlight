@@ -1,5 +1,5 @@
-github.com/Elagoht/collage v0.25.0 h1:kNOEZIjzEdltVbEqsN9VScPxDUazUSsRJGYaKKbMwOs=
-github.com/Elagoht/collage v0.25.0/go.mod h1:tyGWGpujZXtCFFxn9pjws85HOFOt4QdiuRswwQhj1Qw=
+github.com/Elagoht/collage v0.49.0 h1:kgvo+vpy9jWlKVIfvGNKHnjolWAHbke9s9jnQPJMUkM=
+github.com/Elagoht/collage v0.49.0/go.mod h1:tyGWGpujZXtCFFxn9pjws85HOFOt4QdiuRswwQhj1Qw=
 github.com/alecthomas/assert/v2 v2.11.0 h1:2Q9r3ki8+JYXvGsDyBXwH3LcJ+WK5D0gc5E8vS6K3D0=
 github.com/alecthomas/assert/v2 v2.11.0/go.mod h1:Bze95FyfUr7x34QZrjL+XP+0qgp/zg8yS+TtBj1WA3k=
 github.com/alecthomas/chroma/v2 v2.27.0 h1:FodwmyOBgJULFYmDqibcp9pvfDLWdtPRh9v/r5BXYZs=

@@ -11,7 +11,7 @@ app, err := collage.New(&collage.Config{
 })
 ```
 
-Requires collage v0.25.0 or later. Register it in `Config.Plugins`: it adds a
+Requires collage v0.49.0 or later. Register it in `Config.Plugins`: it adds a
 template function, which only a plugin registered there can.
 
 Registering it is the whole of it for a site whose pages already hold
@@ -108,6 +108,11 @@ stops `collage.New`, rather than falling back to one nobody chose.
 - No line numbers or highlighted lines.
 
 ## Changes
+
+### v0.2.3
+
+- Built against collage v0.49.0, whose fragment data is a typed `collage.Data`;
+  the tests use `WithData(collage.Value(v))`. Requires collage v0.49.0.
 
 ### v0.2.1
 
