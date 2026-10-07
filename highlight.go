@@ -40,8 +40,8 @@ const Name = "elagoht/highlight"
 const StylePath = "/_highlight/style.css"
 
 // hrefKey is where BeforeRender leaves the stylesheet's URL for AfterRender, in
-// the render's shared data.
-const hrefKey = Name + ":href"
+// the render's values.
+var hrefKey = collage.NewKey[func() (string, error)](Name + ":href")
 
 // Options configures the plugin.
 type Options struct {
@@ -83,14 +83,15 @@ var (
 func New(opts Options) *Plugin { return &Plugin{opts: opts} }
 
 func (p *Plugin) Name() string                   { return Name }
-func (p *Plugin) Version() string                { return "0.2.3" }
+func (p *Plugin) Version() string                { return "0.2.5" }
 func (p *Plugin) Shutdown(context.Context) error { return nil }
 
 // Configure reads the configuration, makes the stylesheet, and adds
 // {{highlight}}. A style chroma does not have stops the application: a
 // misspelt theme would otherwise be chroma's fallback, silently.
 func (p *Plugin) Configure(_ context.Context, host collage.ConfigHost) error {
-	if err := host.Config(&p.opts); err != nil {
+	var err error
+	if p.opts, err = collage.PluginConfig(host, p.opts); err != nil {
 		return err
 	}
 	if p.opts.Light == "" {
@@ -237,13 +238,13 @@ var errUnknownLanguage = errors.New("highlight: unknown language")
 // URL, which a browser can keep for a year. AfterRender has no render context to
 // ask, and before the render starts the mounts are not yet bound to it, so what
 // is left is a function asking this render's context once the render has run.
-// It lives in the render's shared data and goes with it.
+// It lives in the render's values and goes with them.
 func (p *Plugin) OnBeforeRender(_ context.Context, ev *collage.BeforeRenderEvent) error {
 	if !p.auto || ev.Context == nil {
 		return nil
 	}
 	rc := ev.Context
-	rc.Set(hrefKey, func() (string, error) { return rc.Asset(StylePath) })
+	hrefKey.Set(rc, func() (string, error) { return rc.Asset(StylePath) })
 	return nil
 }
 
@@ -268,7 +269,7 @@ func (p *Plugin) OnAfterRender(_ context.Context, ev *collage.AfterRenderEvent) 
 		return nil
 	}
 	href := StylePath
-	if resolve, ok := ev.Data[hrefKey].(func() (string, error)); ok {
+	if resolve, ok := hrefKey.In(ev.Values); ok && resolve != nil {
 		if v, err := resolve(); err == nil {
 			href = v
 		}

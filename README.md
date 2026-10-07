@@ -11,7 +11,7 @@ app, err := collage.New(&collage.Config{
 })
 ```
 
-Requires collage v0.49.0 or later. Register it in `Config.Plugins`: it adds a
+Requires collage v0.50.0 or later. Register it in `Config.Plugins`: it adds a
 template function, which only a plugin registered there can.
 
 Registering it is the whole of it for a site whose pages already hold
@@ -108,6 +108,13 @@ stops `collage.New`, rather than falling back to one nobody chose.
 - No line numbers or highlighted lines.
 
 ## Changes
+
+### v0.2.5
+
+- v0.2.4 was tagged at v0.2.3's commit by mistake and is retracted.
+- Requires collage v0.50.0. The stylesheet's URL reaches `OnAfterRender`
+  through a typed key read with `In(ev.Values)`; the configuration is read with
+  `collage.PluginConfig`.
 
 ### v0.2.3
 
