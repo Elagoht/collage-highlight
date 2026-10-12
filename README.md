@@ -11,7 +11,7 @@ app, err := collage.New(&collage.Config{
 })
 ```
 
-Requires collage v0.50.0 or later. Register it in `Config.Plugins`: it adds a
+Requires collage v0.61.0 or later. Register it in `Config.Plugins`: it adds a
 template function, which only a plugin registered there can.
 
 Registering it is the whole of it for a site whose pages already hold
@@ -32,7 +32,7 @@ text in the same block, so a typo is a grey block rather than a failed page.
 
 ## On every page
 
-With `auto` on — the default — every rendered page is read for a `<pre>` holding one
+Unless `noAuto` is set, every rendered page is read for a `<pre>` holding one
 `<code>` whose class names a language, `language-go` or `lang-go`, and nothing but
 text. Each is replaced by its coloured markup, where it stands, and the stylesheet
 is hoisted into the page's head with `AfterRenderEvent.Hoist`: it lands where the
@@ -74,7 +74,7 @@ on a dark block. A static build writes it beside the pages.
 | `light` | `github` | the chroma style for a light colour scheme |
 | `dark` | `github-dark` | the chroma style for a dark one; `"-"` leaves it out, and `light` is used in both |
 | `noBackground` | `false` | leaves the block's background to the site's own stylesheet, keeping the theme's text colours |
-| `auto` | `true` | colours the blocks already on rendered pages; `false` leaves only `{{highlight}}` |
+| `noAuto` | `false` | leaves the blocks already on rendered pages uncoloured, so only `{{highlight}}` colours code |
 
 The styles are chroma's: `github`, `monokai`, `dracula`, `nord`, `solarized-light`
 and [the rest](https://xyproto.github.io/splash/docs/). A name chroma does not have
@@ -88,7 +88,7 @@ stops `collage.New`, rather than falling back to one nobody chose.
     "light": "github",
     "dark": "github-dark",
     "noBackground": true,
-    "auto": true
+    "noAuto": false
   }
 }
 ```
@@ -99,7 +99,7 @@ stops `collage.New`, rather than falling back to one nobody chose.
   reader's system setting, needs its own stylesheet; this one only answers
   `prefers-color-scheme`.
 - A fragment served on its own — a fragment path, a pushed update — does not run
-  the page hooks, so the `auto` pass does not colour its blocks. `{{highlight}}`
+  the page hooks, so the automatic pass does not colour its blocks. `{{highlight}}`
   in the fragment's template does.
 - A page with no `</head>` gets its blocks coloured but no stylesheet link.
 - A layout that links the stylesheet by hand, rather than through
@@ -108,6 +108,18 @@ stops `collage.New`, rather than falling back to one nobody chose.
 - No line numbers or highlighted lines.
 
 ## Changes
+
+### v0.3.0
+
+Changed in v0.3.0, for the v1 plugin conventions. A removed key now stops the
+application at start with `unknown key`, where it used to be ignored.
+
+| was | now |
+|---|---|
+| `"auto": false` / `Options.Auto *bool` | `"noAuto": true` / `Options.NoAuto bool` |
+| `"auto": true` | remove the key: colouring rendered pages is the default |
+
+- Requires collage v0.61.0.
 
 ### v0.2.5
 

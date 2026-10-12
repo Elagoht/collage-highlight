@@ -25,16 +25,16 @@
     "type": "object",
     "description": "A collage plugin that colours code with chroma.",
     "properties": {
-      "auto": {
-        "type": "boolean",
-        "description": "Auto colours the code blocks already on a rendered page: \u003cpre\u003e\u003ccode class=\"language-go\"\u003e, as Markdown renderers write them. On by default; false leaves only {{highlight}}."
-      },
       "dark": {
         "type": "string"
       },
       "light": {
         "type": "string",
         "description": "Light and Dark are the chroma styles of the two themes, chosen by the reader's prefers-color-scheme: \"github\", \"monokai\", \"dracula\"… Default \"github\" and \"github-dark\". Dark \"-\" leaves the dark theme out, and Light is then used in both."
+      },
+      "noAuto": {
+        "type": "boolean",
+        "description": "NoAuto leaves the code blocks already on a rendered page — \u003cpre\u003e\u003ccode class=\"language-go\"\u003e, as Markdown renderers write them — uncoloured, so only {{highlight}} colours code. By default they are coloured."
       },
       "noBackground": {
         "type": "boolean",

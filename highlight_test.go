@@ -13,22 +13,16 @@ import (
 
 	highlight "github.com/Elagoht/collage-highlight"
 	"github.com/Elagoht/collage/pkg/collage"
+	"github.com/Elagoht/collage/pkg/collagetest"
 )
 
-func newSite(opts highlight.Options, pages map[string]string) (*collage.App, error) {
-	templates := fstest.MapFS{}
+// siteOptions are the options of a site serving pages, each template at / for
+// "index" and at /<name> otherwise, with highlight.New(opts).
+func siteOptions(opts highlight.Options, pages map[string]string, more ...collagetest.SiteOption) []collagetest.SiteOption {
+	templates := map[string]string{}
+	var items []collage.Registrable
 	for name, body := range pages {
-		templates["t/"+name+".html"] = &fstest.MapFile{Data: []byte(body)}
-	}
-	app, err := collage.New(&collage.Config{
-		Server:   collage.ServerConfig{Host: "localhost", Port: 3000},
-		Template: collage.TemplateConfig{FS: templates, Root: "t"},
-		Plugins:  []collage.Plugin{highlight.New(opts)},
-	})
-	if err != nil {
-		return nil, err
-	}
-	for name := range pages {
+		templates[name+".html"] = body
 		path := "/" + name
 		if name == "index" {
 			path = "/"
@@ -37,20 +31,19 @@ func newSite(opts highlight.Options, pages map[string]string) (*collage.App, err
 			WithContent(collage.NewFragment(name, name+".html").WithData(collage.Value(map[string]string{"Code": `if a < b { fmt.Println("x") }`})).Build()).
 			WithPath("en", path).
 			Build()
-		if err := app.RegisterPage(page); err != nil {
-			return nil, err
-		}
+		items = append(items, page)
 	}
-	return app, nil
+	return append([]collagetest.SiteOption{
+		collagetest.WithoutHome(),
+		collagetest.WithTemplates(templates),
+		collagetest.WithRegister(items...),
+		collagetest.WithPlugins(highlight.New(opts)),
+	}, more...)
 }
 
-func site(t *testing.T, opts highlight.Options, pages map[string]string) *collage.App {
+func site(t *testing.T, opts highlight.Options, pages map[string]string, more ...collagetest.SiteOption) *collage.App {
 	t.Helper()
-	app, err := newSite(opts, pages)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return app
+	return collagetest.NewSite(t, siteOptions(opts, pages, more...)...).App
 }
 
 func get(app *collage.App, path string) *httptest.ResponseRecorder {
@@ -178,17 +171,30 @@ func TestBlockBeforeTheHoist(t *testing.T) {
 	}
 }
 
-// A page without code, or with Auto off, is served exactly as rendered.
+// A page without code, or with NoAuto, is served exactly as rendered.
 func TestUntouched(t *testing.T) {
 	plain := `<html><head></head><body><p>No code</p><code class="language-go">inline</code></body></html>`
 	app := site(t, highlight.Options{}, map[string]string{"index": plain})
 	if body := get(app, "/").Body.String(); body != plain {
 		t.Errorf("a page without blocks changed:\n%s", body)
 	}
-	off := false
-	app = site(t, highlight.Options{Auto: &off}, map[string]string{"index": markdownPage})
+	app = site(t, highlight.Options{NoAuto: true}, map[string]string{"index": markdownPage})
 	if body := get(app, "/").Body.String(); strings.Contains(body, "chroma") || strings.Contains(body, "_highlight") {
-		t.Errorf("Auto off coloured the page:\n%s", body)
+		t.Errorf("NoAuto coloured the page:\n%s", body)
+	}
+	app = site(t, highlight.Options{}, map[string]string{"index": markdownPage},
+		collagetest.WithPluginConfig(highlight.Name, `{"noAuto": true}`))
+	if body := get(app, "/").Body.String(); strings.Contains(body, "chroma") {
+		t.Errorf(`{"noAuto": true} coloured the page:\n%s`, body)
+	}
+}
+
+// The key v0.3.0 replaced stops the application rather than being ignored.
+func TestOldAutoKeyFailsAtInit(t *testing.T) {
+	_, err := collagetest.TrySite(t, siteOptions(highlight.Options{}, map[string]string{"index": "x"},
+		collagetest.WithPluginConfig(highlight.Name, `{"auto": false}`))...)
+	if err == nil || !strings.Contains(err.Error(), `unknown key "auto"`) {
+		t.Errorf("err = %v, want an unknown key error", err)
 	}
 }
 
@@ -239,7 +245,7 @@ func TestStaticBuild(t *testing.T) {
 
 func TestUnknownStyleStopsNew(t *testing.T) {
 	for _, opts := range []highlight.Options{{Light: "no-such-style"}, {Dark: "nope"}} {
-		if _, err := newSite(opts, map[string]string{"index": "x"}); err == nil {
+		if _, err := collagetest.TrySite(t, siteOptions(opts, map[string]string{"index": "x"})...); err == nil {
 			t.Errorf("%+v: collage.New succeeded", opts)
 		}
 	}

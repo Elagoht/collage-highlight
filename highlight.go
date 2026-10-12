@@ -51,10 +51,11 @@ type Options struct {
 	// is then used in both.
 	Light string `json:"light"`
 	Dark  string `json:"dark"`
-	// Auto colours the code blocks already on a rendered page:
-	// <pre><code class="language-go">, as Markdown renderers write them. On by
-	// default; false leaves only {{highlight}}.
-	Auto *bool `json:"auto"`
+	// NoAuto leaves the code blocks already on a rendered page —
+	// <pre><code class="language-go">, as Markdown renderers write them —
+	// uncoloured, so only {{highlight}} colours code. By default they are
+	// coloured.
+	NoAuto bool `json:"noAuto"`
 	// NoBackground leaves the block's background colour to the site's own
 	// stylesheet, keeping the theme's text colours.
 	NoBackground bool `json:"noBackground"`
@@ -63,7 +64,6 @@ type Options struct {
 // Plugin colours code.
 type Plugin struct {
 	opts      Options
-	auto      bool
 	css       []byte
 	style     *chroma.Style
 	formatter *chromahtml.Formatter
@@ -83,7 +83,7 @@ var (
 func New(opts Options) *Plugin { return &Plugin{opts: opts} }
 
 func (p *Plugin) Name() string                   { return Name }
-func (p *Plugin) Version() string                { return "0.2.6" }
+func (p *Plugin) Version() string                { return "0.3.0" }
 func (p *Plugin) Shutdown(context.Context) error { return nil }
 
 // Configure reads the configuration, makes the stylesheet, and adds
@@ -100,7 +100,6 @@ func (p *Plugin) Configure(_ context.Context, host collage.ConfigHost) error {
 	if p.opts.Dark == "" {
 		p.opts.Dark = "github-dark"
 	}
-	p.auto = p.opts.Auto == nil || *p.opts.Auto
 	light, err := lookup(p.opts.Light)
 	if err != nil {
 		return err
@@ -240,7 +239,7 @@ var errUnknownLanguage = errors.New("highlight: unknown language")
 // is left is a function asking this render's context once the render has run.
 // It lives in the render's values and goes with them.
 func (p *Plugin) OnBeforeRender(_ context.Context, ev *collage.BeforeRenderEvent) error {
-	if !p.auto || ev.Context == nil {
+	if p.opts.NoAuto || ev.Context == nil {
 		return nil
 	}
 	rc := ev.Context
@@ -260,7 +259,7 @@ const styleKey = "stylesheet:" + StylePath
 // the layout put {{hoist "head"}} only in the HTML the render produced, and
 // replacing the blocks first would leave it the fallback before </head>.
 func (p *Plugin) OnAfterRender(_ context.Context, ev *collage.AfterRenderEvent) error {
-	if !p.auto || !bytes.Contains(ev.HTML, []byte("<code")) {
+	if p.opts.NoAuto || !bytes.Contains(ev.HTML, []byte("<code")) {
 		return nil
 	}
 	page := ev.HTML
