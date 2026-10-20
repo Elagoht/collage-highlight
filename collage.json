@@ -3,6 +3,7 @@
   "name": "elagoht/highlight",
   "description": "A collage plugin that colours code with chroma.",
   "repository": "https://github.com/Elagoht/collage-highlight",
+  "setup": "Works on its own: colours every `<pre><code class=\"language-go\">` block, which is what elagoht/markdown writes, and links its stylesheet through the layout's `{{hoist \"head\"}}`.\nFor code a template writes itself: `{{highlight .Code \"go\"}}`.",
   "templateFunctions": [
     {
       "name": "highlight",
